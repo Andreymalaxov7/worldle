@@ -141,3 +141,108 @@ hr {
     background-color: #3A3A3C;
     border-color: #3A3A3C;
 }
+
+.notification {
+    position: fixed;
+    top: -100px; /* Начинаем за пределами экрана */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #538D4E;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    animation: slideInFromTop 0.5s ease-out forwards;
+    z-index: 1000;
+}
+
+.notification.success {
+    background-color: #538D4E;
+}
+
+.notification.error {
+    background-color: #FF4B4B;
+}
+
+.notification.warning {
+    background-color: #B59F3B;
+}
+
+@keyframes slideInFromTop {
+    0% {
+        top: -100px;
+        opacity: 0;
+    }
+    100% {
+        top: 20px;
+        opacity: 1;
+    }
+}
+
+/* Анимация появления буквы (увеличили с 0.15s до 0.3s) */
+@keyframes popIn {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Анимация для переворота карточки (увеличили с 0.3s до 0.6s) */
+@keyframes flipIn {
+    0% {
+        transform: rotateX(0);
+    }
+    100% {
+        transform: rotateX(180deg);
+    }
+}
+
+@keyframes flipOut {
+    0% {
+        transform: rotateX(180deg);
+    }
+    100% {
+        transform: rotateX(0);
+    }
+}
+
+.block {
+    display: flex;
+    border: 1px solid #3A3A3C;
+    color: white;
+    font-family: "Libre Franklin", sans-serif;
+    font-weight: 900;
+    font-size: 26px;
+    justify-content: center;
+    align-items: center;
+    perspective: 1000px;
+    transform-style: preserve-3d;
+}
+
+/* Увеличили длительность с 0.15s до 0.3s */
+.block.pop {
+    animation: popIn 0.3s ease-in-out forwards;
+}
+
+/* Увеличили длительность с 0.3s до 0.6s */
+.block.flip-in {
+    animation: flipIn 0.6s ease-in forwards;
+}
+
+.block.flip-out {
+    animation: flipOut 0.6s ease-out forwards;
+}
+
+/* Увеличили задержки между буквами (с 0.2s до 0.4s) */
+.block.flip-in:nth-child(5n + 1) { animation-delay: 0s; }
+.block.flip-in:nth-child(5n + 2) { animation-delay: 0.4s; }
+.block.flip-in:nth-child(5n + 3) { animation-delay: 0.8s; }
+.block.flip-in:nth-child(5n + 4) { animation-delay: 1.2s; }
+.block.flip-in:nth-child(5n + 5) { animation-delay: 1.6s; }

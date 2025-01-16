@@ -11,17 +11,33 @@ class WordleGame {
         this.initializeGame();
     }
 
+    showNotification(message, type = 'success') {
+        const existingNotification = document.querySelector('.notification');
+        if (existingNotification) {
+            existingNotification.remove();
+        }
+
+        const notification = document.createElement('div');
+        notification.classList.add('notification', type);
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+
     async initializeGame() {
         await this.wordService.initialize();
         this.word = this.wordService.getRandomWord();
-        console.log('New word selected:', this.word); // Для отладки
+        console.log('New word selected:', this.word);
 
         this.keys.forEach(key => {
             key.addEventListener('click', () => {
                 const letter = key.textContent.trim();
 
                 if (this.gameOver) {
-                    alert('Игра окончена! Начните новую игру.');
+                    this.showNotification('Игра окончена! Начните новую игру.', 'warning');
                     return;
                 }
 
@@ -50,21 +66,19 @@ class WordleGame {
     isCurrentRowFull() {
         const isFull = this.currentCellIndex === this.getCurrentRowEnd();
         if (isFull) {
-            this.isRowLocked = true; // Блокируем строку, когда она заполнена
+            this.isRowLocked = true;
         }
         return isFull;
     }
 
     addLetter(letter) {
-        // Проверяем, не заблокирована ли текущая строка
         if (this.isRowLocked) {
-            alert('Нажмите ENTER, чтобы подтвердить слово!');
+            this.showNotification('Нажмите ENTER, чтобы подтвердить слово!', 'warning');
             return;
         }
 
-        // Проверяем, не выходим ли мы за пределы текущей строки
         if (this.currentCellIndex >= this.getCurrentRowEnd()) {
-            alert('Нажмите ENTER, чтобы перейти на следующую строку!');
+            this.showNotification('Нажмите ENTER, чтобы перейти на следующую строку!', 'warning');
             return;
         }
 
@@ -72,21 +86,23 @@ class WordleGame {
             const cell = this.cells[this.currentCellIndex];
             if (cell.textContent === '') {
                 cell.textContent = letter;
+                cell.classList.add('pop');
+                cell.addEventListener('animationend', () => {
+                    cell.classList.remove('pop');
+                }, { once: true });
                 this.currentCellIndex++;
             }
         }
     }
 
     deleteLetter() {
-        // Проверяем, не заблокирована ли текущая строка
         if (this.isRowLocked) {
-            alert('Нажмите ENTER, чтобы подтвердить слово!');
+            this.showNotification('Нажмите ENTER, чтобы подтвердить слово!', 'warning');
             return;
         }
 
-        // Проверяем, не пытаемся ли мы удалить букву из предыдущей строки
         if (this.currentCellIndex <= this.getCurrentRowStart()) {
-            console.log('Нельзя удалять буквы из предыдущей строки!');
+            this.showNotification('Нельзя удалять буквы из предыдущей строки!', 'error');
             return;
         }
 
@@ -97,11 +113,10 @@ class WordleGame {
 
     async checkWord() {
         if (!this.isCurrentRowFull()) {
-            alert('Слово не заполнено!');
+            this.showNotification('Слово не заполнено!', 'error');
             return;
         }
 
-        // Разблокируем строку для проверки
         this.isRowLocked = false;
 
         const currentRowStart = this.getCurrentRowStart();
@@ -110,10 +125,9 @@ class WordleGame {
             .map(cell => cell.textContent)
             .join('');
 
-        // Проверяем существование слова
         const isValidWord = await this.wordService.checkWordExists(guessedWord);
         if (!isValidWord) {
-            alert('Такого слова не существует!');
+            this.showNotification('Такого слова не существует!', 'error');
             return;
         }
 
@@ -121,13 +135,13 @@ class WordleGame {
 
         if (guessedWord === this.word) {
             this.gameOver = true;
-            alert('Вы угадали слово!');
+            this.showNotification('Поздравляем! Вы угадали слово!', 'success');
             return;
         }
 
         if (this.currentRow >= this.cells.length / 5 - 1) {
             this.gameOver = true;
-            alert('Игра окончена! Загаданное слово: ' + this.word);
+            this.showNotification(`Игра окончена! Загаданное слово: ${this.word}`, 'error');
             return;
         }
 
@@ -137,12 +151,10 @@ class WordleGame {
     evaluateGuess(guessedWord, currentRowStart) {
         const letterCounts = {};
 
-        // Count letters in target word
         for (const letter of this.word) {
             letterCounts[letter] = (letterCounts[letter] || 0) + 1;
         }
 
-        // First pass - mark correct letters
         const cellStates = new Array(5).fill('incorrect');
         const remainingCounts = {...letterCounts};
 
@@ -153,7 +165,6 @@ class WordleGame {
             }
         });
 
-        // Second pass - mark partially correct letters
         guessedWord.split('').forEach((letter, index) => {
             if (cellStates[index] !== 'correct' &&
                 remainingCounts[letter] > 0) {
@@ -162,30 +173,37 @@ class WordleGame {
             }
         });
 
-        // Apply visual feedback
         cellStates.forEach((state, index) => {
             const cell = this.cells[currentRowStart + index];
-            cell.classList.add(state);
 
-            // Также обновляем цвет соответствующей клавиши
-            const key = Array.from(this.keys).find(k => k.textContent.trim() === cell.textContent);
-            if (key) {
-                // Убираем предыдущие классы
-                key.classList.remove('correct', 'almost', 'incorrect');
-                // Добавляем новый класс только если это улучшает предыдущий статус клавиши
-                if (state === 'correct' ||
-                    (state === 'almost' && !key.classList.contains('correct')) ||
-                    (state === 'incorrect' && !key.classList.contains('correct') && !key.classList.contains('almost'))) {
-                    key.classList.add(state);
+            cell.classList.add('flip-in');
+
+            cell.addEventListener('animationend', () => {
+                cell.classList.remove('flip-in');
+                cell.classList.add(state);
+                cell.classList.add('flip-out');
+
+                cell.addEventListener('animationend', () => {
+                    cell.classList.remove('flip-out');
+                }, { once: true });
+
+                const key = Array.from(this.keys).find(k => k.textContent.trim() === cell.textContent);
+                if (key) {
+                    key.classList.remove('correct', 'almost', 'incorrect');
+                    if (state === 'correct' ||
+                        (state === 'almost' && !key.classList.contains('correct')) ||
+                        (state === 'incorrect' && !key.classList.contains('correct') && !key.classList.contains('almost'))) {
+                        key.classList.add(state);
+                    }
                 }
-            }
+            }, { once: true });
         });
     }
 
     moveToNextRow() {
         this.currentRow++;
         this.currentCellIndex = this.getCurrentRowStart();
-        this.isRowLocked = false; // Разблокируем новую строку
+        this.isRowLocked = false;
     }
 
     async reset() {
@@ -199,14 +217,14 @@ class WordleGame {
             cell.classList.remove('correct', 'almost', 'incorrect');
         });
 
-        // Очищаем подсветку клавиш
         this.keys.forEach(key => {
             key.classList.remove('correct', 'almost', 'incorrect');
         });
 
-        // Выбираем новое слово
         this.word = this.wordService.getRandomWord();
-        console.log('New word selected:', this.word); // Для отладки
+        console.log('New word selected:', this.word);
+
+        this.showNotification('Новое слово доступно!', 'success');
     }
 }
 

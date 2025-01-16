@@ -7,7 +7,6 @@ class WordService {
 
     async initialize() {
         try {
-            // Загружаем список слов из Free Dictionary API
             const response = await fetch('https://api.datamuse.com/words?sp=?????');
             const words = await response.json();
             this.wordList = words
@@ -22,7 +21,6 @@ class WordService {
             return true;
         } catch (error) {
             console.error('Failed to load words:', error);
-            // Fallback wordlist if API fails
             this.wordList = ['HELLO', 'WORLD', 'PEARL', 'HOUSE', 'SMILE', 'BRAIN', 'CLOUD',
                 'SPACE', 'LIGHT', 'MUSIC', 'DANCE', 'RIVER', 'GREEN', 'DREAM'];
             return false;
@@ -38,14 +36,12 @@ class WordService {
         return this.wordList.includes(word.toUpperCase());
     }
 
-    // Альтернативный метод проверки слова через API
     async checkWordExists(word) {
         try {
             const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
             return response.ok;
         } catch (error) {
             console.error('Error checking word:', error);
-            // В случае ошибки API проверяем локальный список
             return this.isValidWord(word);
         }
     }
