@@ -1,96 +1,225 @@
-// Глобальные переменные
-let currentCellIndex = 0; // Индекс текущей ячейки
-const cells = document.querySelectorAll(".block"); // Список всех ячеек
-const keys = document.querySelectorAll(".button"); // Список всех клавиш
-const word = "HELLO"; // Загаданное слово
+class WordleGame {
+    constructor() {
+        this.wordService = new WordService();
+        this.currentCellIndex = 0;
+        this.cells = document.querySelectorAll('.block');
+        this.keys = document.querySelectorAll('.button');
+        this.gameOver = false;
+        this.currentRow = 0;
+        this.isRowLocked = false;
 
-keys.forEach((key) => {
-    key.addEventListener("click", () => {
-        const letter = key.textContent.trim(); // Получаем текст кнопки
+        this.initializeGame();
+    }
 
-        // Проверяем, является ли это специальной клавишей
-        if (letter === "ENTER") {
-            checkWord(); // Запускаем функцию проверки слова
-        } else if (letter === "DELETE") {
-            deleteLetter(); // Запускаем функцию удаления буквы
-        } else {
-            addLetter(letter); // Добавляем букву в текущую ячейку
+    async initializeGame() {
+        await this.wordService.initialize();
+        this.word = this.wordService.getRandomWord();
+        console.log('New word selected:', this.word); // Для отладки
+
+        this.keys.forEach(key => {
+            key.addEventListener('click', () => {
+                const letter = key.textContent.trim();
+
+                if (this.gameOver) {
+                    alert('Игра окончена! Начните новую игру.');
+                    return;
+                }
+
+                switch (letter) {
+                    case 'ENTER':
+                        this.checkWord();
+                        break;
+                    case 'DELETE':
+                        this.deleteLetter();
+                        break;
+                    default:
+                        this.addLetter(letter);
+                }
+            });
+        });
+    }
+
+    getCurrentRowStart() {
+        return this.currentRow * 5;
+    }
+
+    getCurrentRowEnd() {
+        return (this.currentRow + 1) * 5;
+    }
+
+    isCurrentRowFull() {
+        const isFull = this.currentCellIndex === this.getCurrentRowEnd();
+        if (isFull) {
+            this.isRowLocked = true; // Блокируем строку, когда она заполнена
         }
-    });
+        return isFull;
+    }
+
+    addLetter(letter) {
+        // Проверяем, не заблокирована ли текущая строка
+        if (this.isRowLocked) {
+            alert('Нажмите ENTER, чтобы подтвердить слово!');
+            return;
+        }
+
+        // Проверяем, не выходим ли мы за пределы текущей строки
+        if (this.currentCellIndex >= this.getCurrentRowEnd()) {
+            alert('Нажмите ENTER, чтобы перейти на следующую строку!');
+            return;
+        }
+
+        if (this.currentCellIndex < this.cells.length) {
+            const cell = this.cells[this.currentCellIndex];
+            if (cell.textContent === '') {
+                cell.textContent = letter;
+                this.currentCellIndex++;
+            }
+        }
+    }
+
+    deleteLetter() {
+        // Проверяем, не заблокирована ли текущая строка
+        if (this.isRowLocked) {
+            alert('Нажмите ENTER, чтобы подтвердить слово!');
+            return;
+        }
+
+        // Проверяем, не пытаемся ли мы удалить букву из предыдущей строки
+        if (this.currentCellIndex <= this.getCurrentRowStart()) {
+            console.log('Нельзя удалять буквы из предыдущей строки!');
+            return;
+        }
+
+        this.currentCellIndex--;
+        const cell = this.cells[this.currentCellIndex];
+        cell.textContent = '';
+    }
+
+    async checkWord() {
+        if (!this.isCurrentRowFull()) {
+            alert('Слово не заполнено!');
+            return;
+        }
+
+        // Разблокируем строку для проверки
+        this.isRowLocked = false;
+
+        const currentRowStart = this.getCurrentRowStart();
+        const guessedWord = Array.from(this.cells)
+            .slice(currentRowStart, this.getCurrentRowEnd())
+            .map(cell => cell.textContent)
+            .join('');
+
+        // Проверяем существование слова
+        const isValidWord = await this.wordService.checkWordExists(guessedWord);
+        if (!isValidWord) {
+            alert('Такого слова не существует!');
+            return;
+        }
+
+        this.evaluateGuess(guessedWord, currentRowStart);
+
+        if (guessedWord === this.word) {
+            this.gameOver = true;
+            alert('Вы угадали слово!');
+            return;
+        }
+
+        if (this.currentRow >= this.cells.length / 5 - 1) {
+            this.gameOver = true;
+            alert('Игра окончена! Загаданное слово: ' + this.word);
+            return;
+        }
+
+        this.moveToNextRow();
+    }
+
+    evaluateGuess(guessedWord, currentRowStart) {
+        const letterCounts = {};
+
+        // Count letters in target word
+        for (const letter of this.word) {
+            letterCounts[letter] = (letterCounts[letter] || 0) + 1;
+        }
+
+        // First pass - mark correct letters
+        const cellStates = new Array(5).fill('incorrect');
+        const remainingCounts = {...letterCounts};
+
+        guessedWord.split('').forEach((letter, index) => {
+            if (this.word[index] === letter) {
+                cellStates[index] = 'correct';
+                remainingCounts[letter]--;
+            }
+        });
+
+        // Second pass - mark partially correct letters
+        guessedWord.split('').forEach((letter, index) => {
+            if (cellStates[index] !== 'correct' &&
+                remainingCounts[letter] > 0) {
+                cellStates[index] = 'almost';
+                remainingCounts[letter]--;
+            }
+        });
+
+        // Apply visual feedback
+        cellStates.forEach((state, index) => {
+            const cell = this.cells[currentRowStart + index];
+            cell.classList.add(state);
+
+            // Также обновляем цвет соответствующей клавиши
+            const key = Array.from(this.keys).find(k => k.textContent.trim() === cell.textContent);
+            if (key) {
+                // Убираем предыдущие классы
+                key.classList.remove('correct', 'almost', 'incorrect');
+                // Добавляем новый класс только если это улучшает предыдущий статус клавиши
+                if (state === 'correct' ||
+                    (state === 'almost' && !key.classList.contains('correct')) ||
+                    (state === 'incorrect' && !key.classList.contains('correct') && !key.classList.contains('almost'))) {
+                    key.classList.add(state);
+                }
+            }
+        });
+    }
+
+    moveToNextRow() {
+        this.currentRow++;
+        this.currentCellIndex = this.getCurrentRowStart();
+        this.isRowLocked = false; // Разблокируем новую строку
+    }
+
+    async reset() {
+        this.currentCellIndex = 0;
+        this.currentRow = 0;
+        this.gameOver = false;
+        this.isRowLocked = false;
+
+        this.cells.forEach(cell => {
+            cell.textContent = '';
+            cell.classList.remove('correct', 'almost', 'incorrect');
+        });
+
+        // Очищаем подсветку клавиш
+        this.keys.forEach(key => {
+            key.classList.remove('correct', 'almost', 'incorrect');
+        });
+
+        // Выбираем новое слово
+        this.word = this.wordService.getRandomWord();
+        console.log('New word selected:', this.word); // Для отладки
+    }
+}
+
+// Initialize the game
+const game = new WordleGame();
+
+// Add keyboard support
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+        game.checkWord();
+    } else if (event.key === 'Backspace') {
+        game.deleteLetter();
+    } else if (/^[A-Za-z]$/.test(event.key)) {
+        game.addLetter(event.key.toUpperCase());
+    }
 });
-
-// Добавление буквы
-function addLetter(letter) {
-    if (currentCellIndex < cells.length) { // Проверяем, что индекс не выходит за пределы
-        const cell = cells[currentCellIndex]; // Берём текущую ячейку
-        if (cell.textContent === "") { // Проверяем, пуста ли ячейка
-            cell.textContent = letter; // Записываем букву
-            currentCellIndex++; // Переходим к следующей ячейке
-        }
-    }
-}
-
-// Удаление буквы (с ограничением на возврат в предыдущую строку)
-function deleteLetter() {
-    const currentRowStart = Math.floor(currentCellIndex / 5) * 5; // Начало текущей строки
-    if (currentCellIndex > currentRowStart) { // Проверяем, находимся ли мы в пределах строки
-        currentCellIndex--; // Возвращаемся к предыдущей ячейке
-        const cell = cells[currentCellIndex]; // Берём текущую ячейку
-        cell.textContent = ""; // Очищаем её
-    } else {
-        console.log("Нельзя удалять буквы из предыдущей строки!");
-    }
-}
-
-// Проверка слова
-function checkWord() {
-    if (currentCellIndex % 5 !== 0) {
-        alert("Слово не заполнено!");
-        return;
-    }
-
-    const currentRowStart = currentCellIndex - 5; // Начало текущей строки
-    const guessedWord = Array.from(cells)
-        .slice(currentRowStart, currentCellIndex) // Берём текущую строку
-        .map(cell => cell.textContent) // Получаем текст из ячеек
-        .join(""); // Собираем в строку
-
-    if (guessedWord.length !== 5) {
-        alert("Слово должно содержать 5 букв!");
-        return;
-    }
-
-    guessedWord.split("").forEach((letter, index) => {
-        const cell = cells[currentRowStart + index];
-        if (word[index] === letter) {
-            cell.classList.add("correct"); // Зеленый: буква на правильной позиции
-        } else if (word.includes(letter)) {
-            cell.classList.add("almost"); // Желтый: буква есть, но не на месте
-        } else {
-            cell.classList.add("incorrect"); // Серый: буквы нет в слове
-        }
-    });
-
-    if (guessedWord === word) {
-        alert("Вы угадали слово!");
-        return;
-    }
-
-    if (currentCellIndex >= cells.length) {
-        alert("Игра окончена! Загаданное слово: " + word);
-        return;
-    }
-
-    // Переход на следующую строку
-    moveToNextRow();
-}
-
-// Переход на следующую строку
-function moveToNextRow() {
-    const nextRowStart = Math.floor(currentCellIndex / 5) * 5; // Начало следующей строки
-    if (nextRowStart < cells.length) {
-        currentCellIndex = nextRowStart; // Устанавливаем индекс на первую ячейку строки
-    } else {
-        alert("Больше нет строк для ввода!");
-    }
-}
