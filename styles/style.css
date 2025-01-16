@@ -64,7 +64,14 @@ hr {
 }
 
 .block {
+    display: flex;
     border: 1px solid #3A3A3C;
+    color: white;
+    font-family: "Libre Franklin", sans-serif;
+    font-weight: 900;
+    font-size: 26px;
+    justify-content: center;
+    align-items: center;
 }
 
 .keyboard-container {
@@ -118,4 +125,19 @@ hr {
 .delete-button, .enter-button {
     width: 48px;
     font-size: 12px;
+}
+
+.correct {
+    background-color: #538D4E;
+    border-color: #538D4E;
+}
+
+.almost {
+    background-color: #B59F3B;
+    border-color: #B59F3B;
+}
+
+.incorrect {
+    background-color: #3A3A3C;
+    border-color: #3A3A3C;
 }
