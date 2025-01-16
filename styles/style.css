@@ -97,7 +97,7 @@ hr {
     border-radius: 4px;
 }
 
-.button:hover {
+.button {
     cursor: pointer;
 }
 
