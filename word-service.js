@@ -22,7 +22,10 @@ class WordService {
         } catch (error) {
             console.error('Failed to load words:', error);
             this.wordList = ['HELLO', 'WORLD', 'PEARL', 'HOUSE', 'SMILE', 'BRAIN', 'CLOUD',
-                'SPACE', 'LIGHT', 'MUSIC', 'DANCE', 'RIVER', 'GREEN', 'DREAM'];
+                'SPACE', 'LIGHT', 'MUSIC', 'DANCE', 'RIVER', 'GREEN', 'DREAM', 'APPLE',
+                'BEACH', 'CHAIR', 'DRAFT', 'EAGLE', 'FLASH', 'GRAVE', 'HUMAN', 'INDEX',
+                'JUDGE', 'KNIFE', 'LEMON', 'MOVIE', 'NIGHT', 'OCEAN', 'PAINT', 'QUEEN',
+                'RADIO', 'SNAKE', 'TABLE', 'UNCLE', 'VOICE', 'WATER', 'YOUNG', 'ZEBRA'];
             return false;
         }
     }
@@ -37,12 +40,7 @@ class WordService {
     }
 
     async checkWordExists(word) {
-        try {
-            const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-            return response.ok;
-        } catch (error) {
-            console.error('Error checking word:', error);
-            return this.isValidWord(word);
-        }
+        // Используем только локальную проверку
+        return this.isValidWord(word);
     }
 }
