@@ -243,11 +243,26 @@ const game = new WordleGame();
 
 // Add keyboard support
 document.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
+    // Если игра окончена, показываем уведомление
+    if (game.gameOver) {
+        game.showNotification('Игра окончена! Начните новую игру.', 'warning');
+        return;
+    }
+
+    // Приводим название клавиши к верхнему регистру для единообразия
+    const key = event.key.toUpperCase();
+
+    if (key === 'ENTER') {
+        // Предотвращаем стандартное поведение Enter
+        event.preventDefault();
         game.checkWord();
-    } else if (event.key === 'Backspace') {
+    } else if (key === 'BACKSPACE') {
+        // Предотвращаем стандартное поведение Backspace
+        event.preventDefault();
         game.deleteLetter();
-    } else if (/^[A-Za-z]$/.test(event.key)) {
-        game.addLetter(event.key.toUpperCase());
+    } else if (/^[A-Z]$/.test(key)) {
+        // Предотвращаем стандартное поведение для букв
+        event.preventDefault();
+        game.addLetter(key);
     }
 });
