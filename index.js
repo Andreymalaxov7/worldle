@@ -149,56 +149,66 @@ class WordleGame {
     }
 
     evaluateGuess(guessedWord, currentRowStart) {
-        const letterCounts = {};
+    const letterCounts = {};
 
-        for (const letter of this.word) {
-            letterCounts[letter] = (letterCounts[letter] || 0) + 1;
+    for (const letter of this.word) {
+        letterCounts[letter] = (letterCounts[letter] || 0) + 1;
+    }
+
+    const cellStates = new Array(5).fill('incorrect');
+    const remainingCounts = {...letterCounts};
+    const keyStates = new Map(); // Добавляем Map для хранения лучшего состояния каждой клавиши
+
+    // Первый проход - отмечаем правильные буквы
+    guessedWord.split('').forEach((letter, index) => {
+        if (this.word[index] === letter) {
+            cellStates[index] = 'correct';
+            remainingCounts[letter]--;
+            // Сохраняем лучшее состояние для клавиши
+            keyStates.set(letter, 'correct');
         }
+    });
 
-        const cellStates = new Array(5).fill('incorrect');
-        const remainingCounts = {...letterCounts};
-
-        guessedWord.split('').forEach((letter, index) => {
-            if (this.word[index] === letter) {
-                cellStates[index] = 'correct';
-                remainingCounts[letter]--;
+    // Второй проход - отмечаем частично правильные буквы
+    guessedWord.split('').forEach((letter, index) => {
+        if (cellStates[index] !== 'correct' && remainingCounts[letter] > 0) {
+            cellStates[index] = 'almost';
+            remainingCounts[letter]--;
+            // Сохраняем состояние только если еще нет 'correct'
+            if (!keyStates.has(letter)) {
+                keyStates.set(letter, 'almost');
             }
-        });
+        } else if (!keyStates.has(letter)) {
+            // Если буква неправильная и еще нет лучшего состояния
+            keyStates.set(letter, 'incorrect');
+        }
+    });
 
-        guessedWord.split('').forEach((letter, index) => {
-            if (cellStates[index] !== 'correct' &&
-                remainingCounts[letter] > 0) {
-                cellStates[index] = 'almost';
-                remainingCounts[letter]--;
-            }
-        });
-
-        cellStates.forEach((state, index) => {
-            const cell = this.cells[currentRowStart + index];
-
-            cell.classList.add('flip-in');
+    // Применяем анимации и обновляем цвета ячеек
+    cellStates.forEach((state, index) => {
+        const cell = this.cells[currentRowStart + index];
+        
+        cell.classList.add('flip-in');
+        
+        cell.addEventListener('animationend', () => {
+            cell.classList.remove('flip-in');
+            cell.classList.add(state);
+            cell.classList.add('flip-out');
 
             cell.addEventListener('animationend', () => {
-                cell.classList.remove('flip-in');
-                cell.classList.add(state);
-                cell.classList.add('flip-out');
-
-                cell.addEventListener('animationend', () => {
-                    cell.classList.remove('flip-out');
-                }, { once: true });
-
-                const key = Array.from(this.keys).find(k => k.textContent.trim() === cell.textContent);
-                if (key) {
-                    key.classList.remove('correct', 'almost', 'incorrect');
-                    if (state === 'correct' ||
-                        (state === 'almost' && !key.classList.contains('correct')) ||
-                        (state === 'incorrect' && !key.classList.contains('correct') && !key.classList.contains('almost'))) {
-                        key.classList.add(state);
-                    }
-                }
+                cell.classList.remove('flip-out');
             }, { once: true });
-        });
-    }
+
+            // Обновляем клавиатуру используя сохраненные состояния
+            const key = Array.from(this.keys).find(k => k.textContent.trim() === cell.textContent);
+            if (key) {
+                const bestState = keyStates.get(cell.textContent);
+                key.classList.remove('correct', 'almost', 'incorrect');
+                key.classList.add(bestState);
+            }
+        }, { once: true });
+    });
+}
 
     moveToNextRow() {
         this.currentRow++;
